@@ -8,46 +8,28 @@ import { useRouter } from "next/navigation";
 function calculatePoints(pred: any, match: any) {
   let points = 0;
   let allCorrect = true;
-
-  // Fallback, falls Werte fehlen (verhindert App-Crashes)
   const predHome = pred.pred_goals_home || 0;
   const predAway = pred.pred_goals_away || 0;
   const matchHome = match.goals_home || 0;
   const matchAway = match.goals_away || 0;
-
   const predDiff = predHome - predAway;
   const matchDiff = matchHome - matchAway;
-  
   const predWinner = predDiff > 0 ? 'home' : (predDiff < 0 ? 'away' : 'draw');
   const matchWinner = matchDiff > 0 ? 'home' : (matchDiff < 0 ? 'away' : 'draw');
-
-  // 1. Richtiger Sieger
   if (predWinner === matchWinner) {
       points += 1;
-      // Underdog Bonus
       if (match.underdog_team && matchWinner === match.underdog_team) points += 1;
   } else allCorrect = false;
-
-  // 2. Richtige Tordifferenz
   if (predDiff === matchDiff) points += 1; else allCorrect = false;
-
-  // 3. Richtiges exaktes Ergebnis
   if (predHome === matchHome && predAway === matchAway) points += 1; else allCorrect = false;
-
-  // 4. Erster Torschütze (mit Sicherheits-Check für leere Felder)
   const predScorer = (pred.pred_first_scorer || "").toLowerCase();
   const matchScorer = (match.first_scorer || "").toLowerCase();
   if (predScorer === matchScorer && matchScorer !== "") points += 1; else allCorrect = false;
-
-  // 5. MOTM (mit Sicherheits-Check)
   const predMotm = (pred.pred_motm || "").toLowerCase();
   const matchMotm = (match.motm || "").toLowerCase();
   if (predMotm === matchMotm && matchMotm !== "") points += 1; else allCorrect = false;
-
-  // 6. Alles richtig
   if (allCorrect) points += 2;
-
-  return points;
+  return points * (match.multiplier || 1);
 }
 
 export default function Dashboard() {

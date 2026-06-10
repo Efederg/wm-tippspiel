@@ -30,7 +30,7 @@ function calculatePoints(pred: any, match: any) {
   const matchMotm = (match.motm || "").toLowerCase();
   if (predMotm === matchMotm && matchMotm !== "") points += 1; else allCorrect = false;
   if (allCorrect) points += 2;
-  return points;
+  return points * (match.multiplier || 1);
 }
 
 export default function Admin() {
@@ -41,7 +41,7 @@ export default function Admin() {
   const [userPredictions, setUserPredictions] = useState<any[]>([]);
   
   // Formular für neue Spiele
-  const [newMatch, setNewMatch] = useState({ home: "", away: "", date: "", underdog: "" });
+  const [newMatch, setNewMatch] = useState({ home: "", away: "", date: "", underdog: "", multiplier: 1 });
 
   useEffect(() => {
     checkAdminAndFetch();
@@ -71,13 +71,14 @@ export default function Admin() {
       team_away: newMatch.away,
       match_date: new Date(newMatch.date).toISOString(),
       underdog_team: newMatch.underdog === "" ? null : newMatch.underdog,
-      status: 'upcoming'
+      status: 'upcoming',
+      multiplier: newMatch.multiplier // <-- DAS IST NEU
     });
 
     if (error) alert("Fehler: " + error.message);
     else {
       alert("Spiel erfolgreich erstellt!");
-      setNewMatch({ home: "", away: "", date: "", underdog: "" });
+      setNewMatch({ home: "", away: "", date: "", underdog: "", multiplier: 1 }); // <-- DAS IST NEU
       fetchMatches();
     }
   };
@@ -166,6 +167,11 @@ export default function Admin() {
                 <option value="">Kein Underdog-Bonus für dieses Spiel</option>
                 <option value="home">Heimteam ist Underdog (+1 Pkt)</option>
                 <option value="away">Auswärtsteam ist Underdog (+1 Pkt)</option>
+              </select>
+              <select className="w-full border p-2 rounded text-black font-bold" value={newMatch.multiplier} onChange={e => setNewMatch({...newMatch, multiplier: parseInt(e.target.value)})}>
+                <option value={1}>⚪ Gruppenspiel (Einfache Punkte)</option>
+                <option value={2}>🔥 K.O.-Spiel (Doppelte Punkte)</option>
+                <option value={4}>🏆 FINALE (Vierfache Punkte!)</option>
               </select>
 
               <button type="submit" className="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700">Spiel eintragen</button>
