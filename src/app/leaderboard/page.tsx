@@ -14,7 +14,7 @@ export default function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     // Holt alle registrierten Spieler
-    const { data: profiles } = await supabase.from('profiles').select('*');
+    const { data: profiles } = await supabase.from('profiles').select('*').eq('is_admin', false);
     // Holt alle getätigten Tipps aller Spieler
     const { data: predictions } = await supabase.from('predictions').select('*');
 
