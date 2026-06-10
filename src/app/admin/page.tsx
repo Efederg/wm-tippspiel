@@ -5,6 +5,34 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+// --- PUNKTE-LOGIK FÜR ADMIN-UPDATE ---
+function calculatePoints(pred: any, match: any) {
+  let points = 0;
+  let allCorrect = true;
+  const predHome = pred.pred_goals_home || 0;
+  const predAway = pred.pred_goals_away || 0;
+  const matchHome = match.goals_home || 0;
+  const matchAway = match.goals_away || 0;
+  const predDiff = predHome - predAway;
+  const matchDiff = matchHome - matchAway;
+  const predWinner = predDiff > 0 ? 'home' : (predDiff < 0 ? 'away' : 'draw');
+  const matchWinner = matchDiff > 0 ? 'home' : (matchDiff < 0 ? 'away' : 'draw');
+  if (predWinner === matchWinner) {
+      points += 1;
+      if (match.underdog_team && matchWinner === match.underdog_team) points += 1;
+  } else allCorrect = false;
+  if (predDiff === matchDiff) points += 1; else allCorrect = false;
+  if (predHome === matchHome && predAway === matchAway) points += 1; else allCorrect = false;
+  const predScorer = (pred.pred_first_scorer || "").toLowerCase();
+  const matchScorer = (match.first_scorer || "").toLowerCase();
+  if (predScorer === matchScorer && matchScorer !== "") points += 1; else allCorrect = false;
+  const predMotm = (pred.pred_motm || "").toLowerCase();
+  const matchMotm = (match.motm || "").toLowerCase();
+  if (predMotm === matchMotm && matchMotm !== "") points += 1; else allCorrect = false;
+  if (allCorrect) points += 2;
+  return points;
+}
+
 export default function Admin() {
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -61,21 +89,54 @@ export default function Admin() {
     fetchMatches();
   };
 
-  // --- TIPPS BEARBEITEN ---
+  // --- TIPPS BEARBEITEN (Lädt nun alle Spieler, auch ohne existierenden Tipp) ---
   const loadPredictionsForMatch = async (match: any) => {
     setSelectedMatch(match);
-    // Lädt die Tipps inkl. Benutzername
-    const { data } = await supabase
-      .from('predictions')
-      .select('*, profiles(username)')
-      .eq('match_id', match.id);
-    if (data) setUserPredictions(data);
+    const { data: profiles } = await supabase.from('profiles').select('*').eq('is_admin', false);
+    const { data: preds } = await supabase.from('predictions').select('*').eq('match_id', match.id);
+    
+    if (profiles) {
+      const combined = profiles.map(profile => {
+        const existingPred = preds?.find(p => p.user_id === profile.id);
+        return existingPred || {
+          user_id: profile.id,
+          match_id: match.id,
+          pred_goals_home: 0,
+          pred_goals_away: 0,
+          pred_first_scorer: "",
+          pred_motm: "",
+          points_earned: 0,
+          username: profile.username
+        };
+      });
+      setUserPredictions(combined);
+    }
   };
 
-  const updatePrediction = async (predId: number, field: string, value: any) => {
-    await supabase.from('predictions').update({ [field]: value }).eq('id', predId);
-    // State lokal updaten damit es flüssig wirkt
-    setUserPredictions(prev => prev.map(p => p.id === predId ? { ...p, [field]: value } : p));
+  // --- TIPP UPDATEN & PUNKTE DIREKT NEU BERECHNEN ---
+  const updatePrediction = async (userId: string, field: string, value: any) => {
+    const currentPred = userPredictions.find(p => p.user_id === userId);
+    if (!currentPred) return;
+
+    let updatedPred = { ...currentPred, [field]: value };
+
+    // Wenn das Spiel bereits beendet ist, berechne die Punkte sofort live neu
+    if (selectedMatch.status === 'finished') {
+      updatedPred.points_earned = calculatePoints(updatedPred, selectedMatch);
+    }
+
+    // Nutzt upsert, damit Einträge neu angelegt werden, falls sie noch nicht existierten
+    await supabase.from('predictions').upsert({
+      user_id: userId,
+      match_id: selectedMatch.id,
+      pred_goals_home: updatedPred.pred_goals_home,
+      pred_goals_away: updatedPred.pred_goals_away,
+      pred_first_scorer: updatedPred.pred_first_scorer,
+      pred_motm: updatedPred.pred_motm,
+      points_earned: updatedPred.points_earned
+    }, { onConflict: 'user_id,match_id' });
+
+    setUserPredictions(prev => prev.map(p => p.user_id === userId ? updatedPred : p));
   };
 
   if (!isAdmin) return <p>Lade Admin-Bereich...</p>;
@@ -150,12 +211,12 @@ export default function Admin() {
                  </thead>
                  <tbody>
                    {userPredictions.map(pred => (
-                     <tr key={pred.id} className="border-b">
-                       <td className="p-2 font-bold text-gray-700">{pred.profiles?.username}</td>
-                       <td className="p-2"><input type="number" min="0" className="border p-1 w-16" value={pred.pred_goals_home} onChange={(e) => updatePrediction(pred.id, 'pred_goals_home', parseInt(e.target.value))} /></td>
-                       <td className="p-2"><input type="number" min="0" className="border p-1 w-16" value={pred.pred_goals_away} onChange={(e) => updatePrediction(pred.id, 'pred_goals_away', parseInt(e.target.value))} /></td>
-                       <td className="p-2"><input type="text" className="border p-1 w-32" value={pred.pred_first_scorer} onChange={(e) => updatePrediction(pred.id, 'pred_first_scorer', e.target.value)} /></td>
-                       <td className="p-2"><input type="text" className="border p-1 w-32" value={pred.pred_motm} onChange={(e) => updatePrediction(pred.id, 'pred_motm', e.target.value)} /></td>
+                     <tr key={pred.user_id} className="border-b">
+                       <td className="p-2 font-bold text-gray-700">{pred.username || pred.profiles?.username}</td>
+                       <td className="p-2"><input type="number" min="0" className="border p-1 w-16 text-black" value={pred.pred_goals_home} onChange={(e) => updatePrediction(pred.user_id, 'pred_goals_home', e.target.value ? parseInt(e.target.value) : 0)} /></td>
+                       <td className="p-2"><input type="number" min="0" className="border p-1 w-16 text-black" value={pred.pred_goals_away} onChange={(e) => updatePrediction(pred.user_id, 'pred_goals_away', e.target.value ? parseInt(e.target.value) : 0)} /></td>
+                       <td className="p-2"><input type="text" className="border p-1 w-32 text-black" value={pred.pred_first_scorer} onChange={(e) => updatePrediction(pred.user_id, 'pred_first_scorer', e.target.value)} /></td>
+                       <td className="p-2"><input type="text" className="border p-1 w-32 text-black" value={pred.pred_motm} onChange={(e) => updatePrediction(pred.user_id, 'pred_motm', e.target.value)} /></td>
                      </tr>
                    ))}
                  </tbody>

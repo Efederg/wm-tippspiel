@@ -74,9 +74,16 @@ export default function Dashboard() {
     const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', session.user.id).single();
     if (profile?.is_admin) setIsAdmin(true);
 
-    // Spiele laden
+    // Spiele laden und sortieren (Offene zuerst von früh nach spät, dann beendete von früh nach spät)
     const { data: matchesData } = await supabase.from('matches').select('*').order('match_date', { ascending: true });
-    if (matchesData) setMatches(matchesData);
+    if (matchesData) {
+        const sortedMatches = [...matchesData].sort((a, b) => {
+            if (a.status === 'upcoming' && b.status === 'finished') return -1;
+            if (a.status === 'finished' && b.status === 'upcoming') return 1;
+            return 0; // Behält die Datums-Sortierung innerhalb der Status-Gruppen bei
+        });
+        setMatches(sortedMatches);
+    }
 
     // ALLE Tipps inkl. User-Profile laden (für die Anzeige der anderen)
     const { data: predsData } = await supabase
