@@ -223,21 +223,25 @@ export default function Dashboard() {
                     <div className="flex gap-4">
                       <div className="w-1/2">
                          <label className="block text-xs text-gray-500 uppercase">{match.team_home} Tore</label>
-                         <input type="number" min="0" disabled={isLocked} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_goals_home} onChange={(e) => handleInputChange(match.id, 'home', parseInt(e.target.value))} />
+                         {/* HIER DIE ÄNDERUNG: isLocked && !isAdmin */}
+                         <input type="number" min="0" disabled={isLocked && !isAdmin} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_goals_home} onChange={(e) => handleInputChange(match.id, 'home', parseInt(e.target.value))} />
                       </div>
                       <div className="w-1/2">
                          <label className="block text-xs text-gray-500 uppercase">{match.team_away} Tore</label>
-                         <input type="number" min="0" disabled={isLocked} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_goals_away} onChange={(e) => handleInputChange(match.id, 'away', parseInt(e.target.value))} />
+                         {/* HIER DIE ÄNDERUNG */}
+                         <input type="number" min="0" disabled={isLocked && !isAdmin} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_goals_away} onChange={(e) => handleInputChange(match.id, 'away', parseInt(e.target.value))} />
                       </div>
                     </div>
                     <div className="flex gap-4">
                       <div className="w-1/2">
                          <label className="block text-xs text-gray-500 uppercase">1. Torschütze</label>
-                         <input type="text" disabled={isLocked} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_first_scorer} onChange={(e) => handleInputChange(match.id, 'scorer', e.target.value)} />
+                         {/* HIER DIE ÄNDERUNG */}
+                         <input type="text" disabled={isLocked && !isAdmin} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_first_scorer} onChange={(e) => handleInputChange(match.id, 'scorer', e.target.value)} />
                       </div>
                       <div className="w-1/2">
                          <label className="block text-xs text-gray-500 uppercase">MOTM</label>
-                         <input type="text" disabled={isLocked} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_motm} onChange={(e) => handleInputChange(match.id, 'motm', e.target.value)} />
+                         {/* HIER DIE ÄNDERUNG */}
+                         <input type="text" disabled={isLocked && !isAdmin} className="w-full border p-2 rounded text-black disabled:bg-gray-100 disabled:text-gray-500" defaultValue={myPred?.pred_motm} onChange={(e) => handleInputChange(match.id, 'motm', e.target.value)} />
                       </div>
                     </div>
                     
