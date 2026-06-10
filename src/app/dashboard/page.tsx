@@ -154,6 +154,9 @@ export default function Dashboard() {
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow">
             <h1 className="text-2xl font-bold text-gray-800">Hallo! 👋</h1>
             <div className="flex gap-4">
+                {isAdmin && (
+                    <button onClick={() => router.push("/admin")} className="bg-purple-600 text-white px-4 py-2 rounded font-bold hover:bg-purple-700">⚙️ Admin</button>
+                )}
                 <button onClick={() => router.push("/leaderboard")} className="bg-green-500 text-white px-4 py-2 rounded font-bold hover:bg-green-600">🏆 Rangliste</button>
                 <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
             </div>
@@ -169,6 +172,7 @@ export default function Dashboard() {
           {matches.map((match) => {
             const myPred = myPredictions.find(p => p.match_id === match.id);
             const isFinished = match.status === 'finished';
+            const isLocked = new Date() >= new Date(match.match_date);
 
             return (
               <div key={match.id} className="bg-white p-6 rounded-xl shadow-md border-t-4 border-blue-500">
@@ -218,9 +222,15 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    <button onClick={() => submitPrediction(match.id)} className="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700">
-                      Tipp speichern
-                    </button>
+                    {isLocked ? (
+                        <div className="w-full bg-gray-500 text-white font-bold py-2 rounded text-center cursor-not-allowed">
+                            ⏳ Spiel läuft / Tipps gesperrt
+                        </div>
+                    ) : (
+                        <button onClick={() => submitPrediction(match.id)} className="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700">
+                            Tipp speichern
+                        </button>
+                    )}
 
                     {/* --- ADMIN BEREICH (nur sichtbar wenn isAdmin === true) --- */}
                     {isAdmin && (
